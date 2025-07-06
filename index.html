@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plano de Estudo Interativo | Cloud & DevOps</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral & Soft Green -->
+    <!-- Application Structure Plan: A dashboard-centric layout. The left, larger column contains the detailed study plan organized into collapsible monthly accordions. This keeps the interface clean and prevents overwhelming the user. The right column is a 'sticky' dashboard panel that stays visible on larger screens, showing key metrics (overall and monthly progress) via charts. This structure allows users to see their high-level progress update in real-time as they check off tasks in the detailed view, providing immediate feedback and motivation. The user flow is simple: view summary, expand a month, check tasks, and see the dashboard charts react instantly. -->
+    <!-- Visualization & Content Choices: 
+    1. Overall Progress: Goal: Inform. Viz: Donut Chart (Chart.js). Interaction: Updates on task completion. Justification: Ideal for showing a single part-to-whole relationship (percent complete).
+    2. Monthly Progress: Goal: Compare. Viz: Bar Chart (Chart.js). Interaction: Updates dynamically. Justification: Best for comparing progress across discrete time units (months).
+    3. Task List: Goal: Organize/Interact. Viz: HTML checklist within collapsible accordions. Interaction: Clicking a checkbox toggles state, saves progress to localStorage, and updates all charts. Justification: Direct and intuitive for task management. Accordions manage information density.
+    4. Data Storage: Goal: Persist User Progress. Method: Browser localStorage. Justification: A simple, effective client-side solution for a single-file application, avoiding server-side complexity. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 1024px) {
+            .dashboard-sticky {
+                position: sticky;
+                top: 2rem;
+            }
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0, 1, 0, 1);
+        }
+        .accordion-content.open {
+            max-height: 2000px; /* Adjust as needed */
+            transition: max-height 1s ease-in-out;
+        }
+        .accordion-icon {
+            transition: transform 0.3s ease-out;
+        }
+        .rotate-45 {
+            transform: rotate(45deg);
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+
+        <header class="text-center mb-10">
+            <h1 class="text-3xl lg:text-5xl font-bold text-emerald-700">Plano de Estudo Interativo</h1>
+            <p class="mt-2 text-lg text-stone-600">Jornada para Cloud/DevOps Júnior</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
+
+            <div id="study-plan-container" class="lg:col-span-2 order-2 lg:order-1">
+            </div>
+
+            <aside id="dashboard" class="lg:col-span-1 order-1 lg:order-2 mb-8 lg:mb-0">
+                <div class="dashboard-sticky space-y-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg border border-stone-200">
+                        <h2 class="text-2xl font-bold text-stone-800 text-center mb-4">Progresso Geral</h2>
+                        <div class="chart-container mx-auto" style="max-width: 300px;">
+                            <canvas id="overallProgressChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg border border-stone-200">
+                        <h2 class="text-2xl font-bold text-stone-800 text-center mb-4">Evolução Mensal</h2>
+                        <div class="chart-container">
+                            <canvas id="monthlyProgressChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+        </main>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const studyPlan = {
+                objective: "Ao final de Dezembro/2025, estar pronto para vagas Cloud/DevOps Júnior",
+                dedication: "10–15h/semana",
+                startDate: "08 de Julho/2025",
+                endDate: "21 de Dezembro/2025",
+                months: [
+                    { name: "MÊS 1 – Fundamentos Cloud e AWS", meta: "Concluir estudo Cloud Practitioner", weeks: [
+                        { name: "Semana 1 (08–14/07)", tasks: ["Introdução à Nuvem (IaaS, PaaS, SaaS)", "Conceitos de AWS: regiões, zonas, VPC", "Criar conta Free Tier AWS", "Primeiros acessos ao console"] },
+                        { name: "Semana 2 (15–21/07)", tasks: ["EC2: criar e gerenciar instâncias Linux", "S3: criar bucket e políticas", "IAM: criar usuários e políticas", "Prática: subir arquivo no S3"] },
+                        { name: "Semana 3 (22–28/07)", tasks: ["CloudWatch e monitoramento", "Conceitos de RDS", "Revisão dos serviços AWS"] },
+                        { name: "Semana 4 (29/07–04/08)", tasks: ["Estudo para AWS Cloud Practitioner", "Realizar 2 simulados gratuitos", "Agendar prova"] }
+                    ]},
+                    { name: "MÊS 2 – Linux, Redes e Git", meta: "Saber operar Linux, redes e versionamento", weeks: [
+                        { name: "Semana 5 (05–11/08)", tasks: ["Comandos básicos Linux", "Instalar Linux em VM ou EC2", "Prática: gerenciamento de usuários"] },
+                        { name: "Semana 6 (12–18/08)", tasks: ["Conceitos de redes (IP, DNS)", "Configuração de rede no Linux", "Firewalls (UFW, IPTables)"] },
+                        { name: "Semana 7 (19–25/08)", tasks: ["Git: instalação e comandos", "Criar repositório no GitHub"] },
+                        { name: "Semana 8 (26/08–01/09)", tasks: ["Prática: versionar arquivos com Git", "Revisão de redes e Linux"] }
+                    ]},
+                    { name: "MÊS 3 – Docker e Containers", meta: "Dominar Docker e publicar imagem", weeks: [
+                        { name: "Semana 9 (02–08/09)", tasks: ["Conceitos de containers", "Instalar Docker e rodar containers"] },
+                        { name: "Semana 10 (09–15/09)", tasks: ["Construção de imagens Dockerfile", "Volumes e redes Docker", "Prática: rodar NGINX"] },
+                        { name: "Semana 11 (16–22/09)", tasks: ["Docker Compose: orquestração", "Publicar imagem no Docker Hub"] },
+                        { name: "Semana 12 (23–29/09)", tasks: ["Projeto 1: criar imagem customizada", "Documentar projeto no GitHub"] }
+                    ]},
+                    { name: "MÊS 4 – Terraform e IaC", meta: "Ter projeto de IaC publicado", weeks: [
+                        { name: "Semana 13 (30/09–06/10)", tasks: ["Introdução ao Terraform", "Instalar e configurar ambiente"] },
+                        { name: "Semana 14 (07–13/10)", tasks: ["Criar EC2 via Terraform", "Gerenciar S3 e IAM com código"] },
+                        { name: "Semana 15 (14–20/10)", tasks: ["Variáveis, outputs e state file", "Prática: provisionar infra completa"] },
+                        { name: "Semana 16 (21–27/10)", tasks: ["Projeto 2: Infra via Terraform", "Subir código no GitHub com README"] }
+                    ]},
+                    { name: "MÊS 5 – CI/CD Pipelines", meta: "Ter pipeline funcional em repositório", weeks: [
+                        { name: "Semana 17 (28/10–03/11)", tasks: ["Fundamentos CI/CD", "GitHub Actions: workflows"] },
+                        { name: "Semana 18 (04–10/11)", tasks: ["Pipeline de build Docker", "Prática: automatizar build"] },
+                        { name: "Semana 19 (11–17/11)", tasks: ["Pipeline com Terraform e AWS", "Revisão de pipelines"] },
+                        { name: "Semana 20 (18–24/11)", tasks: ["Projeto 3: CI/CD completo", "Documentar projeto no GitHub"] }
+                    ]},
+                    { name: "MÊS 6 – Consolidação e Vagas", meta: "Estar pronto para processos seletivos", weeks: [
+                        { name: "Semana 21 (25/11–01/12)", tasks: ["Revisão geral de tecnologias", "Simulados AWS Cloud Practitioner"] },
+                        { name: "Semana 22 (02–08/12)", tasks: ["Preparação de Currículo e LinkedIn", "Criar README detalhado dos projetos"] },
+                        { name: "Semana 23 (09–15/12)", tasks: ["Simulação de entrevistas técnicas", "Refino de perfis profissionais"] },
+                        { name: "Semana 24 (16–22/12)", tasks: ["Aplicar para vagas", "Ajustar conforme feedback"] }
+                    ]}
+                ]
+            };
+            
+            let progressState = {};
+            let charts = {};
+
+            const planContainer = document.getElementById('study-plan-container');
+
+            function loadProgress() {
+                const savedProgress = localStorage.getItem('studyPlanProgress');
+                if (savedProgress) {
+                    progressState = JSON.parse(savedProgress);
+                } else {
+                    studyPlan.months.forEach((month, mIndex) => {
+                        month.weeks.forEach((week, wIndex) => {
+                            progressState[`${mIndex}-${wIndex}`] = week.tasks.map(() => false);
+                        });
+                    });
+                }
+            }
+
+            function saveProgress() {
+                localStorage.setItem('studyPlanProgress', JSON.stringify(progressState));
+            }
+            
+            function calculateProgress() {
+                let totalTasks = 0;
+                let completedTasks = 0;
+                const monthlyProgress = studyPlan.months.map((month, mIndex) => {
+                    let monthTotal = 0;
+                    let monthCompleted = 0;
+                    month.weeks.forEach((week, wIndex) => {
+                        const weekTasks = progressState[`${mIndex}-${wIndex}`] || [];
+                        monthTotal += weekTasks.length;
+                        monthCompleted += weekTasks.filter(Boolean).length;
+                    });
+                    totalTasks += monthTotal;
+                    completedTasks += monthCompleted;
+                    return { total: monthTotal, completed: monthCompleted };
+                });
+                return { totalTasks, completedTasks, monthlyProgress };
+            }
+
+            function renderPlan() {
+                let html = '<div class="space-y-4">';
+                studyPlan.months.forEach((month, mIndex) => {
+                    html += `
+                        <div class="bg-white rounded-2xl shadow-lg border border-stone-200 overflow-hidden">
+                            <button class="accordion-toggle w-full p-6 text-left" data-month="${mIndex}">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h3 class="text-xl lg:text-2xl font-bold text-stone-800">${month.name}</h3>
+                                        <p class="text-md text-emerald-600 mt-1">Meta: ${month.meta}</p>
+                                    </div>
+                                    <div class="accordion-icon text-emerald-500 text-3xl font-light">+</div>
+                                </div>
+                            </button>
+                            <div class="accordion-content" id="month-content-${mIndex}">
+                                <div class="p-6 pt-0 space-y-4">
+                    `;
+                    month.weeks.forEach((week, wIndex) => {
+                        html += `<div class="bg-stone-50 p-4 rounded-lg border border-stone-200">
+                                    <h4 class="font-bold text-stone-700 mb-3">${week.name}</h4>
+                                    <ul class="space-y-2">
+                        `;
+                        week.tasks.forEach((task, tIndex) => {
+                            const isCompleted = progressState[`${mIndex}-${wIndex}`] && progressState[`${mIndex}-${wIndex}`][tIndex];
+                            html += `
+                                <li class="flex items-center">
+                                    <input type="checkbox" id="task-${mIndex}-${wIndex}-${tIndex}" 
+                                        data-m="${mIndex}" data-w="${wIndex}" data-t="${tIndex}"
+                                        class="h-5 w-5 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                                        ${isCompleted ? 'checked' : ''}>
+                                    <label for="task-${mIndex}-${wIndex}-${tIndex}" 
+                                        class="ml-3 text-stone-700 cursor-pointer ${isCompleted ? 'line-through text-stone-400' : ''}">
+                                        ${task}
+                                    </label>
+                                </li>`;
+                        });
+                        html += `</ul></div>`;
+                    });
+                    html += `</div></div></div>`;
+                });
+                html += `</div>`;
+                planContainer.innerHTML = html;
+            }
+
+            function updateDashboard() {
+                const { totalTasks, completedTasks, monthlyProgress } = calculateProgress();
+                
+                charts.overall.data.datasets[0].data = [completedTasks, totalTasks - completedTasks];
+                charts.overall.update();
+
+                charts.monthly.data.datasets[0].data = monthlyProgress.map(m => m.completed);
+                charts.monthly.data.datasets[1].data = monthlyProgress.map(m => m.total - m.completed);
+                charts.monthly.update();
+            }
+
+            function initializeCharts() {
+                const { totalTasks, completedTasks, monthlyProgress } = calculateProgress();
+                
+                const overallCtx = document.getElementById('overallProgressChart').getContext('2d');
+                charts.overall = new Chart(overallCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Concluídas', 'Pendentes'],
+                        datasets: [{
+                            data: [completedTasks, totalTasks - completedTasks],
+                            backgroundColor: ['#10B981', '#F0F0F0'],
+                            borderColor: ['#10B981', '#F0F0F0'],
+                            borderWidth: 1,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.raw} tarefas`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const monthlyCtx = document.getElementById('monthlyProgressChart').getContext('2d');
+                charts.monthly = new Chart(monthlyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: studyPlan.months.map((m, i) => `Mês ${i + 1}`),
+                        datasets: [
+                            {
+                                label: 'Concluídas',
+                                data: monthlyProgress.map(p => p.completed),
+                                backgroundColor: '#10B981',
+                                borderRadius: 4,
+                            },
+                            {
+                                label: 'Pendentes',
+                                data: monthlyProgress.map(p => p.total - p.completed),
+                                backgroundColor: '#A7F3D0',
+                                borderRadius: 4,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                stacked: true,
+                                grid: { display: false }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                grid: { color: '#F0F0F0' }
+                            }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom', align: 'start' },
+                             tooltip: {
+                                callbacks: {
+                                    title: function(context) {
+                                        const monthIndex = context[0].dataIndex;
+                                        return studyPlan.months[monthIndex].name.split('–')[1].trim();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            planContainer.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const { m, w, t } = e.target.dataset;
+                    progressState[`${m}-${w}`][t] = e.target.checked;
+                    e.target.nextElementSibling.classList.toggle('line-through');
+                    e.target.nextElementSibling.classList.toggle('text-stone-400');
+                    saveProgress();
+                    updateDashboard();
+                }
+            });
+
+            planContainer.addEventListener('click', (e) => {
+                const toggle = e.target.closest('.accordion-toggle');
+                if (toggle) {
+                    const monthIndex = toggle.dataset.month;
+                    const content = document.getElementById(`month-content-${monthIndex}`);
+                    const icon = toggle.querySelector('.accordion-icon');
+                    const isOpen = content.classList.contains('open');
+
+                    document.querySelectorAll('.accordion-content.open').forEach(openContent => {
+                        if (openContent !== content) {
+                           openContent.classList.remove('open');
+                           const otherIcon = openContent.previousElementSibling.querySelector('.accordion-icon');
+                           otherIcon.classList.remove('rotate-45');
+                           otherIcon.textContent = '+';
+                        }
+                    });
+
+                    content.classList.toggle('open');
+                    icon.classList.toggle('rotate-45');
+                    icon.textContent = isOpen ? '+' : '−';
+                }
+            });
+
+            loadProgress();
+            renderPlan();
+            initializeCharts();
+            document.querySelector('#month-content-0').classList.add('open');
+            const firstIcon = document.querySelector('.accordion-toggle[data-month="0"] .accordion-icon');
+            firstIcon.classList.add('rotate-45');
+            firstIcon.textContent = '−';
+
+        });
+    </script>
+</body>
+</html>
